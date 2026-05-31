@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:geolocator/geolocator.dart';
@@ -23,7 +24,7 @@ class HardwareService {
 
     bool allGranted = true;
     for (var entry in statuses.entries) {
-      print("Permission ${entry.key} status: ${entry.value}");
+      debugPrint("Permission ${entry.key} status: ${entry.value}");
       if (!entry.value.isGranted) {
         allGranted = false;
       }
@@ -35,7 +36,7 @@ class HardwareService {
   Future<void> initializeBluetooth() async {
     // Check if Bluetooth is supported
     if (await FlutterBluePlus.isSupported == false) {
-      print("Bluetooth not supported by this device");
+      debugPrint("Bluetooth not supported by this device");
       return;
     }
     
@@ -45,7 +46,7 @@ class HardwareService {
         await FlutterBluePlus.turnOn();
       }
     } catch (e) {
-      print("Error turning on Bluetooth: \$e");
+      debugPrint("Error turning on Bluetooth: $e");
     }
   }
 

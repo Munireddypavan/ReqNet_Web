@@ -57,11 +57,11 @@ class _ChatsScreenState extends State<ChatsScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
+                const Row(
                   children: [
-                    const Icon(Icons.forum_rounded, color: AppTheme.primary, size: 20),
-                    const SizedBox(width: 8),
-                    const Text(
+                    Icon(Icons.forum_rounded, color: AppTheme.primary, size: 20),
+                    SizedBox(width: 8),
+                    Text(
                       'MESH CHAT', 
                       style: TextStyle(
                         fontFamily: 'Inter', 
@@ -214,7 +214,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
                     const SizedBox(width: 8),
                     Text(
                       '$hops hops',
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 10,
                         color: AppTheme.outline,
                         fontWeight: FontWeight.w400,

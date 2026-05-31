@@ -111,7 +111,7 @@ class StatusScreen extends StatelessWidget {
             onChanged: (v) {
               meshProvider.toggleProtocol(title, v);
             },
-            activeColor: Colors.white,
+            activeThumbColor: Colors.white,
             activeTrackColor: AppTheme.primary,
             inactiveTrackColor: AppTheme.surfaceContainerHighest,
             inactiveThumbColor: AppTheme.outline,

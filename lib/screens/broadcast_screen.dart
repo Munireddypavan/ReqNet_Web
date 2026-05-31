@@ -41,10 +41,12 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
     
     String locationStr = "Location Unknown";
     try {
-      Position position = await Geolocator.getCurrentPosition(desiredAccuracy: LocationAccuracy.high);
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
       locationStr = "Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}";
     } catch(e) {
-      print("Could not get location: $e");
+      debugPrint("Could not get location: $e");
     }
 
     final msg = _msgController.text.isNotEmpty ? _msgController.text : "CRITICAL POLICE/MEDICAL EMERGENCY";

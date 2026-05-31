@@ -3,10 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:uuid/uuid.dart';
 import 'theme.dart';
-import 'screens/main_scaffold.dart';
 import 'screens/splash_screen.dart';
 import 'providers/mesh_provider.dart';
 import 'providers/chat_provider.dart';
@@ -21,10 +20,10 @@ void main() async {
     // Initialize hardware and permissions for mesh networking
     final hardwareService = HardwareService();
     bool allPerms = await hardwareService.requestAllPermissions();
-    print("Permissions all granted: $allPerms");
+    debugPrint("Permissions all granted: $allPerms");
     await hardwareService.initializeBluetooth();
     bool locInit = await hardwareService.initializeLocation();
-    print("Location initialized: $locInit");
+    debugPrint("Location initialized: $locInit");
   }
   
   String deviceId;
@@ -77,13 +76,16 @@ class _ResQNetAppState extends State<ResQNetApp> {
     final deviceId = widget.deviceId;
     
     await MeshNetworkManager.instance.init(deviceId, meshProvider);
-    MeshRouter.instance.init(deviceId, chatProvider);
+    MeshRouter.instance.init(deviceId, chatProvider, meshProvider);
     
+    await meshProvider.loadDiscoveredNodes();
     await MeshNetworkManager.instance.startMesh();
+    MeshRouter.instance.startBeaconBroadcasting();
   }
 
   @override
   void dispose() {
+    MeshRouter.instance.stopBeaconBroadcasting();
     MeshNetworkManager.instance.stopMesh();
     super.dispose();
   }

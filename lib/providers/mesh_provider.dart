@@ -1,15 +1,18 @@
 import 'package:flutter/foundation.dart';
+import '../services/mesh_database.dart';
 
 class MeshProvider extends ChangeNotifier {
   int _connectedNodesCount = 0;
-  String _signalStrength = 'High';
-  List<String> _activeProtocols = ['Bluetooth LE', 'Wi-Fi Direct', 'LoRa Relay'];
-  List<Map<String, dynamic>> _connectedPeers = [];
+  final String _signalStrength = 'High';
+  final List<String> _activeProtocols = ['Bluetooth LE', 'Wi-Fi Direct', 'LoRa Relay'];
+  final List<Map<String, dynamic>> _connectedPeers = [];
+  List<Map<String, dynamic>> _discoveredNodes = [];
 
   int get connectedNodesCount => _connectedNodesCount;
   String get signalStrength => _signalStrength;
   List<String> get activeProtocols => _activeProtocols;
   List<Map<String, dynamic>> get connectedPeers => _connectedPeers;
+  List<Map<String, dynamic>> get discoveredNodes => _discoveredNodes;
 
   bool isProtocolActive(String protocol) => _activeProtocols.contains(protocol);
 
@@ -43,5 +46,16 @@ class MeshProvider extends ChangeNotifier {
      _connectedPeers.clear();
      _connectedNodesCount = 0;
      notifyListeners();
+  }
+
+  Future<void> loadDiscoveredNodes() async {
+    final results = await MeshDatabase.instance.getAllNodes();
+    _discoveredNodes = List<Map<String, dynamic>>.from(results);
+    notifyListeners();
+  }
+
+  Future<void> upsertDiscoveredNode(Map<String, dynamic> node) async {
+    await MeshDatabase.instance.upsertNode(node);
+    await loadDiscoveredNodes();
   }
 }

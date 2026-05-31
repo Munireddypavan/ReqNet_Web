@@ -43,3 +43,27 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# ==============================================================================
+# ResQNet Web Replica Ignores
+# ==============================================================================
+
+# React + Vite Frontend
+resqnet_web/frontend/node_modules/
+resqnet_web/frontend/dist/
+resqnet_web/frontend/build/
+resqnet_web/frontend/.env
+resqnet_web/frontend/.env.local
+resqnet_web/frontend/.env.development.local
+resqnet_web/frontend/.env.test.local
+resqnet_web/frontend/.env.production.local
+resqnet_web/frontend/npm-debug.log*
+resqnet_web/frontend/yarn-debug.log*
+resqnet_web/frontend/yarn-error.log*
+
+# Java Spring Boot Backend
+resqnet_web/backend/target/
+resqnet_web/backend/*.log
+resqnet_web/backend/*.mv.db
+resqnet_web/backend/*.trace.db
+resqnet_web/backend/db/

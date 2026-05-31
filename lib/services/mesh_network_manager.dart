@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:nearby_connections/nearby_connections.dart';
 import '../providers/mesh_provider.dart';
+import 'mesh_router.dart';
 
 class MeshNetworkManager {
   static final MeshNetworkManager instance = MeshNetworkManager._init();
@@ -50,7 +50,7 @@ class MeshNetworkManager {
   }
 
   void _startWebMockMesh() {
-    print("Starting Web Mock Mesh Network");
+    debugPrint("Starting Web Mock Mesh Network");
     _webMockTimer?.cancel();
     _meshProvider.addPeer('web-peer', 'Web Peer');
     endpointMap['web-peer'] = ConnectionInfo('web-peer', '', false);
@@ -73,7 +73,9 @@ class MeshNetworkManager {
                  type: PayloadType.BYTES,
                ));
              }
-           } catch(e) {}
+           } catch(e) {
+             // ignore: empty_catches
+           }
          }
          _lastMessageCount = messages.length;
        }
@@ -104,6 +106,8 @@ class MeshNetworkManager {
             final info = endpointMap[id];
             if (info != null) {
               _meshProvider.addPeer(id, info.endpointName);
+              // Immediately broadcast GPS coordinates so the peer sees us on the map
+              MeshRouter.instance.broadcastLocationBeacon();
             }
           } else if (status == Status.ERROR || status == Status.REJECTED) {
              // Only remove if we haven't successfully connected.
@@ -119,9 +123,9 @@ class MeshNetworkManager {
           endpointMap.remove(id);
         },
       );
-      print("Adverting started: $a");
+      debugPrint("Advertising started: $a");
     } catch (e) {
-      print("Error starting advertising: $e");
+      debugPrint("Error starting advertising: $e");
     }
   }
 
@@ -132,54 +136,63 @@ class MeshNetworkManager {
         localEndpointName,
         strategy,
         onEndpointFound: (String id, String userName, String serviceId) {
-          // Automatically request connection
-          Nearby().requestConnection(
-            localEndpointName,
-            id,
-            onConnectionInitiated: (String id, ConnectionInfo info) {
-              endpointMap[id] = info;
-              Nearby().acceptConnection(
-                id,
-                onPayLoadRecieved: (endpointId, payload) {
-                  // Use closure so we always call the LATEST registered callback.
-                  onPayloadReceived?.call(endpointId, payload);
-                },
-                onPayloadTransferUpdate: (endpointId, payloadTransferUpdate) {},
-              );
-            },
-            onConnectionResult: (String id, Status status) {
-              if (status == Status.CONNECTED) {
-                final info = endpointMap[id];
-                if (info != null) {
-                  _meshProvider.addPeer(id, info.endpointName);
+          // Skip if already connected to this endpoint
+          if (endpointMap.containsKey(id)) return;
+          // Automatically request connection (guard against race conditions)
+          try {
+            Nearby().requestConnection(
+              localEndpointName,
+              id,
+              onConnectionInitiated: (String id, ConnectionInfo info) {
+                endpointMap[id] = info;
+                Nearby().acceptConnection(
+                  id,
+                  onPayLoadRecieved: (endpointId, payload) {
+                    // Use closure so we always call the LATEST registered callback.
+                    onPayloadReceived?.call(endpointId, payload);
+                  },
+                  onPayloadTransferUpdate: (endpointId, payloadTransferUpdate) {},
+                );
+              },
+              onConnectionResult: (String id, Status status) {
+                if (status == Status.CONNECTED) {
+                  final info = endpointMap[id];
+                  if (info != null) {
+                    _meshProvider.addPeer(id, info.endpointName);
+                    // Immediately broadcast GPS coordinates so the peer sees us on the map
+                    MeshRouter.instance.broadcastLocationBeacon();
+                  }
+                } else if (status == Status.ERROR || status == Status.REJECTED) {
+                   bool isConnected = _meshProvider.connectedPeers.any((p) => p['id'] == id);
+                   if (!isConnected) {
+                     endpointMap.remove(id);
+                   }
                 }
-              } else if (status == Status.ERROR || status == Status.REJECTED) {
-                 bool isConnected = _meshProvider.connectedPeers.any((p) => p['id'] == id);
-                 if (!isConnected) {
-                   endpointMap.remove(id);
-                 }
-              }
-            },
-            onDisconnected: (String id) {
-              _meshProvider.removePeer(id);
-              endpointMap.remove(id);
-            },
-          );
+              },
+              onDisconnected: (String id) {
+                _meshProvider.removePeer(id);
+                endpointMap.remove(id);
+              },
+            );
+          } catch (e) {
+            // Silently ignore STATUS_ALREADY_CONNECTED_TO_ENDPOINT (8003) and similar
+            debugPrint("requestConnection skipped for $id: $e");
+          }
         },
         onEndpointLost: (String? id) {
-           print("Endpoint lost: $id");
+           debugPrint("Endpoint lost: $id");
         },
       );
-      print("Discovery started: $a");
+      debugPrint("Discovery started: $a");
     } catch (e) {
-      print("Error starting discovery: $e");
+      debugPrint("Error starting discovery: $e");
     }
   }
 
   void _startAutoScan() {
     _scanTimer?.cancel();
     _scanTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
-       print("Auto-scan: restarting discovery...");
+       debugPrint("Auto-scan: restarting discovery...");
        await Nearby().stopDiscovery();
        await Future.delayed(const Duration(seconds: 1));
        await startDiscovery();
@@ -194,7 +207,7 @@ class MeshNetworkManager {
      try {
        await Nearby().sendBytesPayload(receiverId, payload.bytes!);
      } catch (e) {
-       print("Error sending payload to \$receiverId: \$e");
+       debugPrint("Error sending payload to $receiverId: $e");
      }
   }
 

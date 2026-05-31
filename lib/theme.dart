@@ -40,6 +40,7 @@ class AppTheme {
         surface: surface,
         onSurface: onSurface,
         onSurfaceVariant: onSurfaceVariant,
+        // ignore: deprecated_member_use
         background: background,
         error: error,
       ),
@@ -62,14 +63,14 @@ class AppTheme {
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: background,
         indicatorColor: primaryContainer,
-        labelTextStyle: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: background, letterSpacing: 1.2);
           }
           return const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: surfaceContainerHighest, letterSpacing: 1.2);
         }),
-        iconTheme: MaterialStateProperty.resolveWith((states) {
-          if (states.contains(MaterialState.selected)) {
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
             return const IconThemeData(color: background, size: 24);
           }
           return const IconThemeData(color: surfaceContainerHighest, size: 24);

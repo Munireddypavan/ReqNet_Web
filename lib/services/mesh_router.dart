@@ -1,29 +1,36 @@
+import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'package:nearby_connections/nearby_connections.dart';
 import 'package:encrypt/encrypt.dart' as encrypt;
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:http/http.dart' as http;
+import 'package:geolocator/geolocator.dart';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'mesh_database.dart';
 import 'mesh_network_manager.dart';
 import '../providers/chat_provider.dart';
+import '../providers/mesh_provider.dart';
 
 class MeshRouter {
   static final MeshRouter instance = MeshRouter._init();
   MeshRouter._init();
 
   late ChatProvider _chatProvider;
+  late MeshProvider _meshProvider;
   late String localDeviceId;
+  Timer? _beaconTimer;
   
   // Basic Encryption setup
   final key = encrypt.Key.fromUtf8('my32lengthsupersecretnooneknows1');
   final iv = encrypt.IV.fromUtf8('my16lengthsuper1'); // Fixed IV for basic P2P sync
   late encrypt.Encrypter encrypter;
 
-  void init(String deviceId, ChatProvider chatProvider) {
+  void init(String deviceId, ChatProvider chatProvider, MeshProvider meshProvider) {
     localDeviceId = deviceId;
     _chatProvider = chatProvider;
+    _meshProvider = meshProvider;
     MeshNetworkManager.instance.onPayloadReceived = _onPayloadReceived;
     encrypter = encrypt.Encrypter(encrypt.AES(key));
   }
@@ -32,7 +39,7 @@ class MeshRouter {
   Future<void> _onPayloadReceived(String endpointId, Payload payload) async {
     try {
       if (payload.bytes == null || payload.type != PayloadType.BYTES) {
-        print("Skipping non-bytes payload from $endpointId (type: ${payload.type})");
+        debugPrint("Skipping non-bytes payload from $endpointId (type: ${payload.type})");
         return;
       }
       final String jsonStr = utf8.decode(payload.bytes!);
@@ -46,6 +53,54 @@ class MeshRouter {
         return;
       }
       
+      // ----------- MESH GPS BEACON ROUTING -----------
+      if (data['type'] == 'GPS_BEACON') {
+        final String senderId = data['senderId'];
+        final int timestamp = data['timestamp'];
+        final double lat = data['lat'];
+        final double lng = data['lng'];
+        final int ttl = data['ttl'] ?? 0;
+        final int hops = data['hops'] ?? 0;
+
+        // Deduplicate using timestamp
+        final allNodes = await MeshDatabase.instance.getAllNodes();
+        final existingNode = allNodes.firstWhere((node) => node['id'] == senderId, orElse: () => {});
+        if (existingNode.isNotEmpty) {
+          final int lastSeen = existingNode['lastSeen'] ?? 0;
+          if (lastSeen >= timestamp) {
+            // Already received this or a newer update. Discard it.
+            return;
+          }
+        }
+
+        // Upsert the peer's coordinate beacon
+        await MeshDatabase.instance.upsertNode({
+          'id': senderId,
+          'name': data['name'] ?? senderId.substring(0, 8),
+          'lastSeen': timestamp,
+          'lat': lat,
+          'lng': lng,
+        });
+
+        // Trigger dynamic provider refresh
+        await _meshProvider.loadDiscoveredNodes();
+
+        // Forward multi-hop across the P2P cluster if TTL allows
+        if (ttl > 0 && senderId != localDeviceId) {
+          data['ttl'] = ttl - 1;
+          data['hops'] = hops + 1;
+          final updatedBytes = utf8.encode(jsonEncode(data));
+          final forwardPayload = Payload(
+            id: DateTime.now().millisecondsSinceEpoch,
+            bytes: Uint8List.fromList(updatedBytes),
+            type: PayloadType.BYTES,
+          );
+          await MeshNetworkManager.instance.broadcastPayload(forwardPayload, excludeEndpoint: endpointId);
+        }
+        return;
+      }
+      // -----------------------------------------------
+      
       final String messageId = data['messageId'];
       
       // 1. Check if seen before
@@ -57,7 +112,7 @@ class MeshRouter {
       try {
          decryptedContent = encrypter.decrypt64(data['content'], iv: iv);
       } catch (e) {
-         print("Decryption failed: $e \nRaw content: ${data['content']}");
+         debugPrint("Decryption failed: $e \nRaw content: ${data['content']}");
          decryptedContent = "ENCRYPTED_MESSAGE";
       }
       
@@ -79,7 +134,7 @@ class MeshRouter {
           final connectivityResult = await Connectivity().checkConnectivity();
           hasInternet = !connectivityResult.contains(ConnectivityResult.none);
         } catch (e) {
-          print("Connectivity check failed: $e");
+          debugPrint("Connectivity check failed: $e");
         }
 
         if (hasInternet) {
@@ -90,12 +145,12 @@ class MeshRouter {
                headers: {'Content-Type': 'application/json'},
              );
              if (response.statusCode == 201 || response.statusCode == 200) {
-                print("GATEWAY SUCCESS: Relayed node message to Authorities via Internet!");
+                debugPrint("GATEWAY SUCCESS: Relayed node message to Authorities via Internet!");
                 await MeshDatabase.instance.updateMessageStatus(messageId, 'Gateway Delivered');
                 return; // Delivered to authorities! Stop propagating on the limited mesh network.
              }
           } catch(e) {
-             print("Gateway HTTP forward failed: $e");
+             debugPrint("Gateway HTTP forward failed: $e");
           }
         }
       }
@@ -122,7 +177,7 @@ class MeshRouter {
          await MeshNetworkManager.instance.broadcastPayload(forwardPayload, excludeEndpoint: endpointId);
       }
     } catch (e) {
-      print("Error routing payload: \$e");
+      debugPrint("Error routing payload: $e");
     }
   }
 
@@ -161,7 +216,9 @@ class MeshRouter {
       try {
         final connectivityResult = await Connectivity().checkConnectivity();
         hasInternet = !connectivityResult.contains(ConnectivityResult.none);
-      } catch (e) { print(e); }
+      } catch (e) {
+        debugPrint("Connectivity check failed: $e");
+      }
       
       if (hasInternet) {
          try {
@@ -171,9 +228,9 @@ class MeshRouter {
              headers: {'Content-Type': 'application/json'},
            );
            messageData['status'] = 'Gateway Delivered';
-           print("GATEWAY SUCCESS: Local authorities alert sent directly to internet.");
+           debugPrint("GATEWAY SUCCESS: Local authorities alert sent directly to internet.");
          } catch (e) {
-            print("HTTP post failed, falling back to offline mesh: $e");
+            debugPrint("HTTP post failed, falling back to offline mesh: $e");
          }
       }
     }
@@ -189,5 +246,115 @@ class MeshRouter {
     final bytes = utf8.encode(jsonEncode(messageData));
     final payload = Payload(id: DateTime.now().millisecondsSinceEpoch, bytes: Uint8List.fromList(bytes), type: PayloadType.BYTES);
     await MeshNetworkManager.instance.broadcastPayload(payload);
+  }
+
+  // Periodic GPS beacon active methods
+  void startBeaconBroadcasting() {
+    _beaconTimer?.cancel();
+    _beaconTimer = Timer.periodic(const Duration(seconds: 30), (timer) async {
+      await broadcastLocationBeacon();
+    });
+    Future.delayed(const Duration(seconds: 2), () {
+      broadcastLocationBeacon();
+    });
+  }
+
+  void stopBeaconBroadcasting() {
+    _beaconTimer?.cancel();
+    _beaconTimer = null;
+  }
+
+  Future<void> broadcastLocationBeacon() async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        debugPrint("Location services disabled, skipping beacon.");
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          debugPrint("Location permissions denied, skipping beacon.");
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        debugPrint("Location permissions denied forever, skipping beacon.");
+        return;
+      }
+
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+
+      final deviceName = await _getDeviceName();
+
+      double lat = position.latitude;
+      double lng = position.longitude;
+      if (kIsWeb) {
+        // Add a small stable offset (approx 30-100 meters) so they don't overlap in web tests
+        final randomOffsetLat = (localDeviceId.hashCode % 100 - 50) * 0.00005;
+        final randomOffsetLng = (localDeviceId.hashCode % 100 - 50) * 0.00005;
+        lat += randomOffsetLat;
+        lng += randomOffsetLng;
+      }
+
+      final beaconData = {
+        'type': 'GPS_BEACON',
+        'messageId': 'beacon-$localDeviceId-${DateTime.now().millisecondsSinceEpoch}',
+        'senderId': localDeviceId,
+        'name': deviceName,
+        'receiverId': 'BROADCAST',
+        'lat': lat,
+        'lng': lng,
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+        'ttl': 5,
+        'hops': 0,
+      };
+
+      // Upsert self location node in local DB
+      await MeshDatabase.instance.upsertNode({
+        'id': localDeviceId,
+        'name': 'Self ($deviceName)',
+        'lastSeen': beaconData['timestamp'],
+        'lat': position.latitude,
+        'lng': position.longitude,
+      });
+      await _meshProvider.loadDiscoveredNodes();
+
+      final bytes = utf8.encode(jsonEncode(beaconData));
+      final payload = Payload(
+        id: DateTime.now().millisecondsSinceEpoch,
+        bytes: Uint8List.fromList(bytes),
+        type: PayloadType.BYTES,
+      );
+
+      await MeshNetworkManager.instance.broadcastPayload(payload);
+      debugPrint("GPS Beacon broadcasted successfully: Lat: ${position.latitude}, Lng: ${position.longitude}");
+    } catch (e) {
+      debugPrint("Error broadcasting location beacon: $e");
+    }
+  }
+
+  Future<String> _getDeviceName() async {
+    try {
+      final deviceInfo = DeviceInfoPlugin();
+      if (kIsWeb) {
+        final webBrowserInfo = await deviceInfo.webBrowserInfo;
+        return webBrowserInfo.browserName.name;
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
+        final androidInfo = await deviceInfo.androidInfo;
+        return androidInfo.model;
+      } else if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final iosInfo = await deviceInfo.iosInfo;
+        return iosInfo.name;
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch device model name: $e");
+    }
+    return localDeviceId.substring(0, 8);
   }
 }
