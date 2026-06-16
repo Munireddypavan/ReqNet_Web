@@ -70,5 +70,6 @@ resqnet_web/backend/db/
 
 # Selenium test reports & python caches
 resqnet_web/testing/__pycache__/
+testing_mobile/__pycache__/
 
 resqnet_web/frontend/selenium-tests/node_modules/
