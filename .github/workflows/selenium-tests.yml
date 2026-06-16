@@ -1,0 +1,73 @@
+name: ResQNet Web E2E CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  e2e-testing:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v4
+
+    - name: Setup Java JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'maven'
+
+    - name: Start Spring Boot Backend Emulator
+      run: |
+        cd resqnet_web/backend
+        mvn spring-boot:run &
+      shell: bash
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: resqnet_web/frontend/package-lock.json
+
+    - name: Install Frontend Dependencies
+      run: |
+        cd resqnet_web/frontend
+        npm install
+
+    - name: Start React Frontend Server
+      run: |
+        cd resqnet_web/frontend
+        npm run dev &
+      shell: bash
+
+    - name: Install Selenium Test Suite dependencies
+      run: |
+        cd resqnet_web/frontend/selenium-tests
+        npm install
+
+    - name: Wait for servers to be online
+      run: |
+        # Wait up to 30 seconds for ports 8080 and 5173 to be active
+        for i in {1..30}; do
+          if curl -s http://localhost:8080/api/nodes > /dev/null && curl -s http://localhost:5173/ReqNet_Web/ > /dev/null; then
+            echo "Both servers are up and listening!"
+            exit 0
+          fi
+          echo "Waiting for servers..."
+          sleep 1
+        done
+        echo "Servers failed to start in time."
+        exit 1
+      shell: bash
+
+    - name: Run E2E Selenium Tests
+      run: |
+        cd resqnet_web/frontend/selenium-tests
+        npm test
+      env:
+        HEADLESS: true

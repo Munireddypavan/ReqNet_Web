@@ -75,6 +75,7 @@ function BroadcastPanel({ onSendMessage }) {
         {/* Message Input Box */}
         <div>
           <textarea
+            id="broadcast-input"
             value={msgText}
             onChange={(e) => setMsgText(e.target.value)}
             placeholder="Enter urgent broadcast message details..."
@@ -87,6 +88,7 @@ function BroadcastPanel({ onSendMessage }) {
           <div className="sos-button-section">
             {/* GLOBAL SOS hold button */}
             <button
+              id="sos-hold-button"
               className={`hold-button ${holdingButton === 'sos' ? 'holding' : ''}`}
               onMouseDown={() => handleStartHold('sos')}
               onMouseUp={handleEndHold}
@@ -107,6 +109,7 @@ function BroadcastPanel({ onSendMessage }) {
 
             {/* AUTHORITIES hold button */}
             <button
+              id="auth-hold-button"
               className={`hold-button ${holdingButton === 'auth' ? 'holding' : ''}`}
               onMouseDown={() => handleStartHold('auth')}
               onMouseUp={handleEndHold}

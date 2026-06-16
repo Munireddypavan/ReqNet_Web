@@ -102,13 +102,13 @@ function App() {
   return (
     <div className="app-container">
       {/* Comms Header Bar */}
-      <header className="header-bar">
-        <div className="logo-section">
-          <NetworkIcon className="logo-icon" size={20} />
-          <h1 className="logo-text">ResQNet Web</h1>
+      <header id="header-bar" className="header-bar">
+        <div id="logo-section" className="logo-section">
+          <NetworkIcon id="logo-icon" className="logo-icon" size={20} />
+          <h1 id="logo-text" className="logo-text">ResQNet Web</h1>
         </div>
-        <div className="status-badge">
-          <span className={`status-indicator ${connected ? 'active' : ''}`} />
+        <div id="status-badge" className="status-badge">
+          <span id="status-indicator" className={`status-indicator ${connected ? 'active' : ''}`} />
           {connected ? 'MESH WEB ACTIVE' : 'CONNECTING TO MESH...'}
         </div>
       </header>

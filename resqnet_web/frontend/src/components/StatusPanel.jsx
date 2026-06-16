@@ -74,19 +74,21 @@ function StatusPanel({ selfNode, activeProtocols, toggleProtocol, connectedCount
           {protocols.map((proto) => {
             const Icon = proto.icon
             const isActive = activeProtocols.includes(proto.name)
+            const protoId = proto.name.toLowerCase().replace(/\s+/g, '-')
             return (
-              <div key={proto.name} className={`toggle-row ${isActive ? 'active' : ''}`}>
+              <div key={proto.name} id={`protocol-row-${protoId}`} className={`toggle-row ${isActive ? 'active' : ''}`}>
                 <div className="toggle-info">
                   <Icon size={16} className="toggle-icon" />
                   <span className="toggle-label">{proto.name}</span>
                 </div>
                 <label className="switch">
                   <input
+                    id={`protocol-checkbox-${protoId}`}
                     type="checkbox"
                     checked={isActive}
                     onChange={() => toggleProtocol(proto.name)}
                   />
-                  <span className="slider" />
+                  <span id={`protocol-slider-${protoId}`} className="slider" />
                 </label>
               </div>
             )

@@ -67,3 +67,9 @@ resqnet_web/backend/*.log
 resqnet_web/backend/*.mv.db
 resqnet_web/backend/*.trace.db
 resqnet_web/backend/db/
+
+# Selenium test reports & python caches
+resqnet_web/testing/__pycache__/
+resqnet_web/testing/*.xlsx
+~$*.xlsx
+resqnet_web/frontend/selenium-tests/node_modules/

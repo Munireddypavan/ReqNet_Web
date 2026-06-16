@@ -123,6 +123,7 @@ function ChatPanel({ messages, selfNode, onSendMessage }) {
         }}
       >
         <input
+          id="chat-input"
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
@@ -136,6 +137,7 @@ function ChatPanel({ messages, selfNode, onSendMessage }) {
           }}
         />
         <button
+          id="chat-send-button"
           type="submit"
           style={{
             width: '42px',
