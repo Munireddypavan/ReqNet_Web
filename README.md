@@ -120,10 +120,6 @@ Before setting up, make sure you have the following installed:
 
 ### Step 1 — Clone the Repository
 
-```bash
-git clone https://github.com/Achyuthvenkat/ResQNet.git
-cd ResQNet/flutter_app
-```
 
 ### Step 2 — Install Flutter Dependencies
 
@@ -170,31 +166,12 @@ flutter run -d <device-id>
 
 ## 📱 Install on Android Device
 
-### Option A — Install via APK (No PC Required)
-
-> *(APK release coming soon — will be available in the [Releases](https://github.com/Achyuthvenkat/ResQNet/releases) section)*
-
-1. Download the latest `resqnet.apk` from [Releases](https://github.com/Achyuthvenkat/ResQNet/releases)
 2. On your Android device, go to `Settings → Security → Enable "Install from Unknown Sources"`
 3. Open the downloaded APK and tap **Install**
 4. Grant all required permissions when prompted
 
 ### Option B — Build APK from Source
 
-```bash
-# Clone the repo
-git clone https://github.com/Achyuthvenkat/ResQNet.git
-cd ResQNet/flutter_app
-
-# Install dependencies
-flutter pub get
-
-# Build the APK
-flutter build apk --release
-
-# The APK will be located at:
-# build/app/outputs/flutter-apk/app-release.apk
-```
 
 Transfer `app-release.apk` to your phone and install it.
 
@@ -280,16 +257,6 @@ Contributions, issues, and feature requests are welcome!
 3. Commit your changes: `git commit -m "Add YourFeature"`
 4. Push to the branch: `git push origin feature/YourFeature`
 5. Open a Pull Request
-
----
-
-## 👤 Author
-
-**Achyuth Venkat**
-
-[![LinkedIn](https://img.shields.io/badge/LinkedIn-0077B5?style=for-the-badge&logo=linkedin&logoColor=white)](https://www.linkedin.com/in/achyuth-venkat)
-[![Gmail](https://img.shields.io/badge/Gmail-D14836?style=for-the-badge&logo=gmail&logoColor=white)](mailto:achyuthvenkat07@gmail.com)
-[![GitHub](https://img.shields.io/badge/GitHub-100000?style=for-the-badge&logo=github&logoColor=white)](https://github.com/Achyuthvenkat)
 
 ---
 
