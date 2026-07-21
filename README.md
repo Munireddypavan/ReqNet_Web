@@ -261,9 +261,3 @@ Contributions, issues, and feature requests are welcome!
 ---
 
 <div align="center">
-
-*Built with ❤️ for emergency resilience*
-
-<img width="100%" src="https://capsule-render.vercel.app/api?type=waving&color=0:7B42F6,100:00F7F7&height=120&section=footer"/>
-
-</div>
