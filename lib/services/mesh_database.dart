@@ -156,6 +156,17 @@ CREATE TABLE nodes (
      return await db.query('nodes', orderBy: 'lastSeen DESC');
   }
 
+  Future<void> clearDatabase() async {
+    if (kIsWeb) {
+      _webMessages.clear();
+      _webNodes.clear();
+      return;
+    }
+    final db = await instance.database;
+    await db.delete('messages');
+    await db.delete('nodes');
+  }
+
   Future<void> close() async {
     if (kIsWeb) return;
     final db = await instance.database;

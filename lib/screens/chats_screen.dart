@@ -5,6 +5,7 @@ import '../theme.dart';
 import '../providers/chat_provider.dart';
 import '../services/mesh_router.dart';
 import '../providers/mesh_provider.dart';
+import '../providers/auth_provider.dart';
 
 class ChatsScreen extends StatefulWidget {
   const ChatsScreen({super.key});
@@ -22,6 +23,7 @@ class _ChatsScreenState extends State<ChatsScreen> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<ChatProvider>().loadAllMessages();
+      context.read<MeshProvider>().loadDiscoveredNodes();
     });
   }
 
@@ -47,6 +49,8 @@ class _ChatsScreenState extends State<ChatsScreen> {
   Widget build(BuildContext context) {
     final chatProvider = context.watch<ChatProvider>();
     final meshProvider = context.watch<MeshProvider>();
+    final authProvider = context.watch<AuthProvider>();
+    final username = authProvider.user?['username']?.toString() ?? '';
 
     return SafeArea(
       child: Column(
@@ -93,17 +97,30 @@ class _ChatsScreenState extends State<ChatsScreen> {
               itemCount: chatProvider.messages.length,
               itemBuilder: (context, index) {
                 final msg = chatProvider.messages[index];
-                final isMe = msg['senderId'] == MeshRouter.instance.localDeviceId;
-                final dt = DateTime.fromMillisecondsSinceEpoch(msg['timestamp'] as int);
+                final senderId = msg['senderId']?.toString() ?? '';
+                final isMe = senderId.isNotEmpty && senderId.toLowerCase() == username.toLowerCase();
+                final timestampVal = msg['timestamp'];
+                final int timestamp = (timestampVal is num)
+                    ? timestampVal.toInt()
+                    : (int.tryParse(timestampVal?.toString() ?? '') ?? DateTime.now().millisecondsSinceEpoch);
+                final dt = DateTime.fromMillisecondsSinceEpoch(timestamp);
                 final timeStr = DateFormat('HH:mm').format(dt);
                 
+                final senderNode = meshProvider.discoveredNodes.firstWhere(
+                  (n) => n['id'] == senderId,
+                  orElse: () => <String, dynamic>{},
+                );
+                final senderName = senderNode.isNotEmpty
+                    ? (senderNode['name'] ?? senderId)
+                    : senderId;
+
                 return _buildMessage(
-                  isMe ? 'Self' : (msg['senderId'] as String).substring(0, 8),
+                  isMe ? 'Self' : senderName,
                   timeStr,
-                  msg['content'],
+                  msg['content']?.toString() ?? '',
                   isMe,
-                  status: msg['status'] ?? 'Sent',
-                  hops: msg['hops'] as int? ?? 0,
+                  status: msg['status']?.toString() ?? 'Sent',
+                  hops: (msg['hops'] is num) ? (msg['hops'] as num).toInt() : 0,
                 );
               },
             ),

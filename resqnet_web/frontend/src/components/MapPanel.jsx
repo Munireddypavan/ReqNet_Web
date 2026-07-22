@@ -36,7 +36,7 @@ function MapRecenter({ center, zoom }) {
   return null
 }
 
-function MapPanel({ selfNode, nodes }) {
+function MapPanel({ selfNode, nodes, onSelectTab }) {
   const [selectedNode, setSelectedNode] = useState(null)
   const [mapCenter, setMapCenter] = useState([13.0827, 80.2707]) // Default center (Chennai, India)
 
@@ -90,7 +90,7 @@ function MapPanel({ selfNode, nodes }) {
           OFF-GRID GPS TRACKER
         </h2>
         <div style={{ fontSize: '10px', color: 'var(--outline)', fontWeight: 'bold', letterSpacing: '0.8px' }}>
-          {nodes.filter(n => n.id !== selfNode?.id).length} PEERS ON TACTICAL GRID
+          {nodes.filter(n => n.id !== selfNode?.id && (Date.now() - (n.lastSeen || 0)) < 120000).length} PEERS ON TACTICAL GRID
         </div>
       </header>
 
@@ -121,7 +121,7 @@ function MapPanel({ selfNode, nodes }) {
 
             {/* Discovered Peer Markers */}
             {nodes
-              .filter((n) => n.id !== selfNode?.id && n.lat && n.lng)
+              .filter((n) => n.id !== selfNode?.id && n.lat && n.lng && (Date.now() - (n.lastSeen || 0)) < 120000)
               .map((n) => (
                 <Marker
                   key={n.id}
@@ -237,7 +237,9 @@ function MapPanel({ selfNode, nodes }) {
               </button>
               <button
                 onClick={() => {
-                  alert(`Starting secure chat handshake request with ${selectedNode.name}...`)
+                  if (onSelectTab) {
+                    onSelectTab('chats')
+                  }
                 }}
                 style={{
                   flex: 1,

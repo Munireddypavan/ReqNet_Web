@@ -7,8 +7,11 @@ import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 import 'theme.dart';
 import 'screens/splash_screen.dart';
+import 'screens/login_screen.dart';
+import 'screens/main_scaffold.dart';
 import 'providers/mesh_provider.dart';
 import 'providers/chat_provider.dart';
+import 'providers/auth_provider.dart';
 import 'services/mesh_network_manager.dart';
 import 'services/mesh_router.dart';
 import 'services/hardware_service.dart';
@@ -44,6 +47,7 @@ void main() async {
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => MeshProvider()),
         ChangeNotifierProvider(create: (_) => ChatProvider(deviceId)), 
       ],
@@ -96,7 +100,37 @@ class _ResQNetAppState extends State<ResQNetApp> {
       title: 'ResQNet',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.tacticalTheme,
-      home: const SplashScreen(),
+      home: const AuthGate(),
     );
+  }
+}
+
+class AuthGate extends StatefulWidget {
+  const AuthGate({super.key});
+
+  @override
+  State<AuthGate> createState() => _AuthGateState();
+}
+
+class _AuthGateState extends State<AuthGate> {
+  bool _showSplash = true;
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (mounted) {
+        setState(() => _showSplash = false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_showSplash) {
+      return const SplashScreen();
+    }
+    final authProvider = context.watch<AuthProvider>();
+    return authProvider.isAuthenticated ? const MainScaffold() : const LoginScreen();
   }
 }

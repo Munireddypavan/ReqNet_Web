@@ -8,7 +8,8 @@ import '../providers/mesh_provider.dart';
 import '../services/mesh_router.dart';
 
 class MapScreen extends StatefulWidget {
-  const MapScreen({super.key});
+  final VoidCallback? onNavigateToChat;
+  const MapScreen({super.key, this.onNavigateToChat});
 
   @override
   State<MapScreen> createState() => _MapScreenState();
@@ -348,12 +349,16 @@ class _MapScreenState extends State<MapScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.pop(context);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Starting chat connection request with $name...'),
-                            backgroundColor: AppTheme.primary,
-                          ),
-                        );
+                        if (widget.onNavigateToChat != null) {
+                          widget.onNavigateToChat!();
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Starting chat connection request with $name...'),
+                              backgroundColor: AppTheme.primary,
+                            ),
+                          );
+                        }
                       },
                       icon: const Icon(Icons.forum_rounded, size: 16, color: AppTheme.background),
                       label: const Text('SECURE CHAT', style: TextStyle(color: AppTheme.background, fontWeight: FontWeight.bold)),

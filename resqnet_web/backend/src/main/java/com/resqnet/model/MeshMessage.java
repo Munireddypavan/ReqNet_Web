@@ -11,7 +11,6 @@ import lombok.NoArgsConstructor;
 @Table(name = "messages")
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class MeshMessage {
     @Id
     private String messageId;

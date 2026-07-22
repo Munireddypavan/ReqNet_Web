@@ -11,7 +11,6 @@ import lombok.NoArgsConstructor;
 @Table(name = "nodes")
 @Data
 @NoArgsConstructor
-@AllArgsConstructor
 public class MeshNode {
     @Id
     private String id;

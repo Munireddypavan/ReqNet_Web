@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { MessageSquare, Send, Check, CheckCheck, RefreshCw } from 'lucide-react'
 
-function ChatPanel({ messages, selfNode, onSendMessage }) {
+function ChatPanel({ messages, selfNode, onSendMessage, nodes = [], username }) {
   const [inputText, setInputText] = useState('')
   const scrollRef = useRef(null)
 
@@ -26,7 +26,7 @@ function ChatPanel({ messages, selfNode, onSendMessage }) {
   }
 
   return (
-    <div className="dashboard-panel" style={{ width: '400px', height: '60%', display: 'flex', flexDirection: 'column' }}>
+    <div className="dashboard-panel" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Panel Header */}
       <header className="panel-header">
         <h2 className="panel-title">
@@ -59,7 +59,9 @@ function ChatPanel({ messages, selfNode, onSendMessage }) {
           </div>
         ) : (
           messages.map((msg, idx) => {
-            const isMe = selfNode && msg.senderId === selfNode.id
+            const isMe = username && msg.senderId && msg.senderId.toLowerCase() === username.toLowerCase()
+            const senderNode = nodes.find((n) => n.id === msg.senderId)
+            const senderName = senderNode ? senderNode.name : (msg.senderId || 'Unknown')
             const timeStr = formatTime(msg.timestamp)
             const isSos = msg.content && msg.content.includes('*** SOS ***')
             const isDispatch = msg.content && msg.content.includes('*** DISPATCH')
@@ -77,7 +79,7 @@ function ChatPanel({ messages, selfNode, onSendMessage }) {
                 {/* Sender Title Badge */}
                 {!isMe && (
                   <span className="chat-sender" style={{ color: isSos ? 'var(--error)' : isDispatch ? 'var(--secondary-container)' : 'var(--outline)' }}>
-                    {msg.senderId ? msg.senderId.substring(0, 8) : 'Unknown'}
+                    {senderName}
                   </span>
                 )}
 

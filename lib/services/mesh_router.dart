@@ -12,6 +12,8 @@ import 'mesh_database.dart';
 import 'mesh_network_manager.dart';
 import '../providers/chat_provider.dart';
 import '../providers/mesh_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'auth_service.dart';
 
 class MeshRouter {
   static final MeshRouter instance = MeshRouter._init();
@@ -124,6 +126,23 @@ class MeshRouter {
       // 4. Update Chat Provider so UI updates if it's the receiver or broadcast
       _chatProvider.addMessageLocally(data);
 
+      try {
+        http.post(
+          Uri.parse('${AuthService.baseUrl}/api/messages'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'messageId': messageId,
+            'senderId': data['senderId'],
+            'receiverId': data['receiverId'],
+            'content': decryptedContent,
+            'timestamp': data['timestamp'],
+            'ttl': data['ttl'],
+            'hops': data['hops'],
+            'status': data['status'],
+          }),
+        ).timeout(const Duration(seconds: 3)).catchError((_) {});
+      } catch (_) {}
+
       final String receiverId = data['receiverId'];
       final int ttl = data['ttl'] ?? 0;
 
@@ -199,9 +218,12 @@ class MeshRouter {
     final messageId = const Uuid().v4();
     final encryptedContent = encrypter.encrypt(content, iv: iv).base64;
     
+    final username = await _getUsername();
+    final senderId = username.isNotEmpty ? username : localDeviceId;
+
     final messageData = {
       'messageId': messageId,
-      'senderId': localDeviceId,
+      'senderId': senderId,
       'receiverId': receiverId,
       'content': encryptedContent,
       'timestamp': DateTime.now().millisecondsSinceEpoch,
@@ -241,6 +263,24 @@ class MeshRouter {
     localData['content'] = content;
     await MeshDatabase.instance.insertMessage(localData);
     _chatProvider.addMessageLocally(localData);
+
+    try {
+      final String base = AuthService.baseUrl;
+      http.post(
+        Uri.parse('$base/api/messages'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'messageId': messageId,
+          'senderId': senderId,
+          'receiverId': receiverId,
+          'content': content,
+          'timestamp': messageData['timestamp'],
+          'ttl': initialTtl,
+          'hops': 0,
+          'status': 'Sent',
+        }),
+      ).timeout(const Duration(seconds: 3)).catchError((_) {});
+    } catch (_) {}
 
     // Send encrypted payload
     final bytes = utf8.encode(jsonEncode(messageData));
@@ -290,7 +330,9 @@ class MeshRouter {
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
 
+      final username = await _getUsername();
       final deviceName = await _getDeviceName();
+      final nodeName = username.isNotEmpty ? username : deviceName;
 
       double lat = position.latitude;
       double lng = position.longitude;
@@ -306,7 +348,7 @@ class MeshRouter {
         'type': 'GPS_BEACON',
         'messageId': 'beacon-$localDeviceId-${DateTime.now().millisecondsSinceEpoch}',
         'senderId': localDeviceId,
-        'name': deviceName,
+        'name': nodeName,
         'receiverId': 'BROADCAST',
         'lat': lat,
         'lng': lng,
@@ -318,7 +360,7 @@ class MeshRouter {
       // Upsert self location node in local DB
       await MeshDatabase.instance.upsertNode({
         'id': localDeviceId,
-        'name': 'Self ($deviceName)',
+        'name': nodeName,
         'lastSeen': beaconData['timestamp'],
         'lat': position.latitude,
         'lng': position.longitude,
@@ -337,6 +379,22 @@ class MeshRouter {
     } catch (e) {
       debugPrint("Error broadcasting location beacon: $e");
     }
+  }
+
+  Future<String> _getUsername() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userJson = prefs.getString('resqnet_user');
+      if (userJson != null) {
+        final user = jsonDecode(userJson);
+        if (user is Map && user.containsKey('username')) {
+          return user['username'] ?? '';
+        }
+      }
+    } catch (e) {
+      debugPrint("Failed to load username from prefs: $e");
+    }
+    return '';
   }
 
   Future<String> _getDeviceName() async {

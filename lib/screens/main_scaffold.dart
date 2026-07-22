@@ -3,6 +3,7 @@ import 'map_screen.dart';
 import 'broadcast_screen.dart';
 import 'chats_screen.dart';
 import 'status_screen.dart';
+import 'profile_screen.dart';
 import '../theme.dart';
 
 class MainScaffold extends StatefulWidget {
@@ -14,13 +15,21 @@ class MainScaffold extends StatefulWidget {
 
 class _MainScaffoldState extends State<MainScaffold> {
   int _currentIndex = 0;
+  late final List<Widget> _screens;
 
-  final List<Widget> _screens = [
-    const MapScreen(),
-    const BroadcastScreen(),
-    const ChatsScreen(),
-    const StatusScreen(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      MapScreen(onNavigateToChat: () {
+        setState(() => _currentIndex = 2);
+      }),
+      const BroadcastScreen(),
+      const ChatsScreen(),
+      const StatusScreen(),
+      const ProfileScreen(),
+    ];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,6 +77,7 @@ class _MainScaffoldState extends State<MainScaffold> {
               _buildNavItem(1, Icons.cell_tower_rounded, 'BROADCAST'),
               _buildNavItem(2, Icons.forum_rounded, 'CHATS'),
               _buildNavItem(3, Icons.analytics_rounded, 'STATUS'),
+              _buildNavItem(4, Icons.person_rounded, 'PROFILE'),
             ],
           ),
         ),

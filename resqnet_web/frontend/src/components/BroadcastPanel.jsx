@@ -1,18 +1,25 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { Megaphone, AlertTriangle, ShieldAlert } from 'lucide-react'
 
-function BroadcastPanel({ onSendMessage }) {
+function BroadcastPanel({ onSendMessage, selfNode }) {
   const [msgText, setMsgText] = useState('')
   const [holdingButton, setHoldingButton] = useState(null) // 'sos' | 'auth'
   const [holdProgress, setHoldProgress] = useState(0) // 0 to 100
   const progressTimerRef = useRef(null)
 
-  const handleStartHold = (type) => {
+  const handleStartHold = (e, type) => {
+    if (e && e.cancelable) {
+      e.preventDefault()
+    }
+    if (holdingButton) return
     setHoldingButton(type)
     setHoldProgress(0)
   }
 
-  const handleEndHold = () => {
+  const handleEndHold = (e) => {
+    if (e && e.cancelable) {
+      e.preventDefault()
+    }
     if (progressTimerRef.current) {
       clearInterval(progressTimerRef.current)
     }
@@ -45,8 +52,12 @@ function BroadcastPanel({ onSendMessage }) {
   }, [holdingButton])
 
   const triggerBroadcast = (type) => {
-    const text = msgText.trim() ? msgText.trim() : (type === 'sos' ? 'SOS EMERGENCY BROADCAST' : 'CRITICAL EMERGENCY WARNING')
+    let text = msgText.trim() ? msgText.trim() : (type === 'sos' ? 'SOS EMERGENCY BROADCAST' : 'CRITICAL EMERGENCY WARNING')
     
+    if (selfNode && selfNode.lat && selfNode.lng) {
+      text += `\nLocation: Lat ${selfNode.lat.toFixed(6)}, Lng ${selfNode.lng.toFixed(6)}`
+    }
+
     if (type === 'sos') {
       onSendMessage(`*** SOS ***\n${text}`, 'BROADCAST')
     } else if (type === 'auth') {
@@ -61,7 +72,7 @@ function BroadcastPanel({ onSendMessage }) {
   }
 
   return (
-    <div className="dashboard-panel" style={{ width: '400px', height: '40%', display: 'flex', flexDirection: 'column' }}>
+    <div className="dashboard-panel" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Panel Header */}
       <header className="panel-header">
         <h2 className="panel-title">
@@ -90,11 +101,11 @@ function BroadcastPanel({ onSendMessage }) {
             <button
               id="sos-hold-button"
               className={`hold-button ${holdingButton === 'sos' ? 'holding' : ''}`}
-              onMouseDown={() => handleStartHold('sos')}
-              onMouseUp={handleEndHold}
-              onMouseLeave={handleEndHold}
-              onTouchStart={() => handleStartHold('sos')}
-              onTouchEnd={handleEndHold}
+              onMouseDown={(e) => handleStartHold(e, 'sos')}
+              onMouseUp={(e) => handleEndHold(e)}
+              onMouseLeave={(e) => handleEndHold(e)}
+              onTouchStart={(e) => handleStartHold(e, 'sos')}
+              onTouchEnd={(e) => handleEndHold(e)}
             >
               {holdingButton === 'sos' && (
                 <div className="hold-progress-bar" style={{ height: `${holdProgress}%`, background: 'rgba(239, 83, 80, 0.2)' }} />
@@ -111,11 +122,11 @@ function BroadcastPanel({ onSendMessage }) {
             <button
               id="auth-hold-button"
               className={`hold-button ${holdingButton === 'auth' ? 'holding' : ''}`}
-              onMouseDown={() => handleStartHold('auth')}
-              onMouseUp={handleEndHold}
-              onMouseLeave={handleEndHold}
-              onTouchStart={() => handleStartHold('auth')}
-              onTouchEnd={handleEndHold}
+              onMouseDown={(e) => handleStartHold(e, 'auth')}
+              onMouseUp={(e) => handleEndHold(e)}
+              onMouseLeave={(e) => handleEndHold(e)}
+              onTouchStart={(e) => handleStartHold(e, 'auth')}
+              onTouchEnd={(e) => handleEndHold(e)}
             >
               {holdingButton === 'auth' && (
                 <div className="hold-progress-bar" style={{ height: `${holdProgress}%`, background: 'rgba(255, 219, 60, 0.2)' }} />

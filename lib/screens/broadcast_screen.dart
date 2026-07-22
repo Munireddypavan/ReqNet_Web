@@ -15,13 +15,25 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
   bool _isBroadcasting = false;
 
   void _triggerSos() async {
-    final msg = _msgController.text.isNotEmpty ? _msgController.text : "SOS EMERGENCY BROADCAST";
+    if (_isBroadcasting) return;
     setState(() => _isBroadcasting = true);
+    
+    String locationStr = "Location Unknown";
+    try {
+      Position position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
+      );
+      locationStr = "Lat: ${position.latitude.toStringAsFixed(6)}, Lng: ${position.longitude.toStringAsFixed(6)}";
+    } catch(e) {
+      debugPrint("Could not get location: $e");
+    }
+
+    final msg = _msgController.text.isNotEmpty ? _msgController.text : "SOS EMERGENCY BROADCAST";
     
     // Broadcast with Max TTL (10 hops)
     await MeshRouter.instance.sendMessage(
       'BROADCAST', 
-      "*** SOS ***\n$msg", 
+      "*** SOS ***\n$msg\nLocation: $locationStr", 
       isBroadcast: true, 
       initialTtl: 10, 
     );
@@ -37,6 +49,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
   }
 
   void _triggerAuthorities() async {
+    if (_isBroadcasting) return;
     setState(() => _isBroadcasting = true);
     
     String locationStr = "Location Unknown";
@@ -44,7 +57,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
       Position position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(accuracy: LocationAccuracy.high),
       );
-      locationStr = "Lat: ${position.latitude.toStringAsFixed(4)}, Lng: ${position.longitude.toStringAsFixed(4)}";
+      locationStr = "Lat: ${position.latitude.toStringAsFixed(6)}, Lng: ${position.longitude.toStringAsFixed(6)}";
     } catch(e) {
       debugPrint("Could not get location: $e");
     }
@@ -53,7 +66,7 @@ class _BroadcastScreenState extends State<BroadcastScreen> {
     
     await MeshRouter.instance.sendMessage(
       'AUTHORITIES', 
-      "*** DISPATCH EMERGENCY ***\n$msg\n$locationStr", 
+      "*** DISPATCH EMERGENCY ***\n$msg\nLocation: $locationStr", 
       isBroadcast: true, 
       initialTtl: 10, 
     );

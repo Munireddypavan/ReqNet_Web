@@ -29,8 +29,11 @@ public class MeshController {
     }
 
     @PostMapping("/nodes")
-    public MeshNode upsertNode(@RequestBody MeshNode node) {
-        return nodeRepository.save(node);
+    public ResponseEntity<?> upsertNode(@RequestBody MeshNode node) {
+        if (node == null || node.getId() == null || node.getId().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Node ID cannot be null or empty");
+        }
+        return ResponseEntity.ok(nodeRepository.save(node));
     }
 
     @GetMapping("/messages")
@@ -39,8 +42,11 @@ public class MeshController {
     }
 
     @PostMapping("/messages")
-    public MeshMessage insertMessage(@RequestBody MeshMessage message) {
-        return messageRepository.save(message);
+    public ResponseEntity<?> insertMessage(@RequestBody MeshMessage message) {
+        if (message == null || message.getMessageId() == null || message.getMessageId().trim().isEmpty()) {
+            return ResponseEntity.badRequest().body("Message ID cannot be null or empty");
+        }
+        return ResponseEntity.ok(messageRepository.save(message));
     }
 
     @PostMapping("/messages/status")

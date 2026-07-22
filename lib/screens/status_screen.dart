@@ -5,6 +5,7 @@ import '../providers/mesh_provider.dart';
 import 'package:flutter/foundation.dart';
 import 'package:device_info_plus/device_info_plus.dart';
 import '../providers/chat_provider.dart';
+import '../providers/auth_provider.dart';
 
 class StatusScreen extends StatelessWidget {
   const StatusScreen({super.key});
@@ -33,11 +34,11 @@ class StatusScreen extends StatelessWidget {
         children: [
           const Text('LOCAL NODE IDENTIFIER', style: TextStyle(color: AppTheme.outline, fontSize: 10, fontWeight: FontWeight.w600, letterSpacing: 1.5)),
           const SizedBox(height: 8),
-          FutureBuilder<String>(
-            future: _getDeviceName(),
-            builder: (context, snapshot) {
+          Consumer<AuthProvider>(
+            builder: (context, auth, _) {
+              final username = auth.user?['username']?.toString().toUpperCase() ?? 'RESOLVING OPERATOR...';
               return Text(
-                snapshot.data ?? 'LOADING...',
+                username,
                 style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w300, letterSpacing: -1.0, color: AppTheme.onSurface),
               );
             },
