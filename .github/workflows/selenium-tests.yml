@@ -81,7 +81,7 @@ jobs:
     - name: Run E2E Selenium Tests
       run: |
         cd resqnet_web/frontend/selenium-tests
-        npm test > selenium-test-report.txt 2>&1 || true
+        npm test > ../testing/test_report.xlsx 2>&1 || true
       env:
         HEADLESS: true
 
@@ -89,7 +89,25 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: selenium-test-report
-        path: resqnet_web/frontend/selenium-tests/selenium-test-report.txt
+        path: resqnet_web/testing/test_report.xlsx
+
+    - name: Upload Appium Test Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: appium-test-report
+        path: testing_mobile/mobile_test_report.xlsx
+
+    - name: Upload Load Test Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: load-test-report
+        path: testing_mobile/mobile_load_test_report.xlsx
+
+    - name: Upload Vulnerability Test Report
+      uses: actions/upload-artifact@v4
+      with:
+        name: vulnerability-test-report
+        path: testing_mobile/mobile_vulnerability_test_report.xlsx
 
     - name: Build React Production Package
       if: github.ref == 'refs/heads/main' && github.event_name == 'push'
