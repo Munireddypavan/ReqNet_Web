@@ -1,4 +1,6 @@
+import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -38,8 +40,8 @@ class AuthService {
     if (kIsWeb) {
       return 'http://localhost:8080';
     } else if (defaultTargetPlatform == TargetPlatform.android) {
-      // Fallback first to Windows machine IP 192.168.1.5 (WiFi), then emulator 10.0.2.2
-      return 'http://192.168.1.5:8080';
+      // Windows machine IP (WiFi) — update this if your IP changes
+      return 'http://10.164.63.204:8080';
     } else {
       return 'http://localhost:8080';
     }
@@ -64,7 +66,7 @@ class AuthService {
         return {'success': false, 'message': data['message'] ?? 'Login failed'};
       }
     } catch (e) {
-      return {'success': false, 'message': 'Cannot connect to backend server: $e'};
+      return {'success': false, 'message': _friendlyError(e)};
     }
   }
 
@@ -96,7 +98,7 @@ class AuthService {
         return {'success': false, 'message': data['message'] ?? 'Registration failed'};
       }
     } catch (e) {
-      return {'success': false, 'message': 'Cannot connect to backend server: $e'};
+      return {'success': false, 'message': _friendlyError(e)};
     }
   }
 
@@ -128,7 +130,18 @@ class AuthService {
         return {'success': false, 'message': data['message'] ?? 'Failed to update profile'};
       }
     } catch (e) {
-      return {'success': false, 'message': 'Cannot connect to backend server: $e'};
+      return {'success': false, 'message': _friendlyError(e)};
     }
+  }
+
+  /// Converts raw Dart exceptions into clean, user-facing messages.
+  static String _friendlyError(Object e) {
+    if (e is TimeoutException) {
+      return 'Server took too long to respond. Check that the server is running and the IP address is correct.';
+    }
+    if (e is SocketException) {
+      return 'Unable to reach the server. Make sure you are on the same network and the server IP/port is correct.';
+    }
+    return 'Connection error. Please check server settings and try again.';
   }
 }

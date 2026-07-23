@@ -1,16 +1,13 @@
 package com.resqnet.model;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "nodes")
-@Data
-@NoArgsConstructor
 public class MeshNode {
     @Id
     private String id;
@@ -19,6 +16,10 @@ public class MeshNode {
     private Double lat;
     private Double lng;
 
+    // Required by JPA and Jackson for deserialization
+    public MeshNode() {}
+
+    // Used by MeshWebSocketHandler to create nodes from WS payloads
     public MeshNode(String id, String name, Long lastSeen, Double lat, Double lng) {
         this.id = id;
         this.name = name;
@@ -42,4 +43,3 @@ public class MeshNode {
     public Double getLng() { return lng; }
     public void setLng(Double lng) { this.lng = lng; }
 }
-

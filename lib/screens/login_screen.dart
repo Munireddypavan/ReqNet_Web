@@ -31,10 +31,20 @@ class _LoginScreenState extends State<LoginScreen> {
     final success = await authProvider.login(username, password);
 
     if (!success && mounted) {
+      final msg = authProvider.errorMessage ?? 'Login failed';
+      final isConnectionError = msg.contains('too long') || msg.contains('reach') || msg.contains('Connection error');
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(authProvider.errorMessage ?? 'Login failed'),
+          content: Text(msg),
           backgroundColor: AppTheme.error,
+          duration: Duration(seconds: isConnectionError ? 6 : 4),
+          action: isConnectionError
+              ? SnackBarAction(
+                  label: 'Configure Server',
+                  textColor: Colors.white,
+                  onPressed: () => _showServerConfigDialog(context),
+                )
+              : null,
         ),
       );
     }

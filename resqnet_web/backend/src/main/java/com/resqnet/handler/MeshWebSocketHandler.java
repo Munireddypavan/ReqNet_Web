@@ -6,13 +6,14 @@ import com.resqnet.model.MeshNode;
 import com.resqnet.repository.MessageRepository;
 import com.resqnet.repository.NodeRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
+import org.springframework.web.socket.handler.ConcurrentWebSocketSessionDecorator;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-import java.io.IOException;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -20,7 +21,9 @@ import java.util.concurrent.CopyOnWriteArrayList;
 @Component
 public class MeshWebSocketHandler extends TextWebSocketHandler {
 
-    private static final List<WebSocketSession> sessions = new CopyOnWriteArrayList<>();
+    // Wrap each session in a ConcurrentWebSocketSessionDecorator to prevent
+    // "TEXT_PARTIAL_WRITING" errors when multiple threads broadcast simultaneously
+    private static final List<ConcurrentWebSocketSessionDecorator> sessions = new CopyOnWriteArrayList<>();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
@@ -31,14 +34,17 @@ public class MeshWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        sessions.add(session);
+        // Wrap with a 30s send-time limit and 512KB buffer to handle concurrent sends safely
+        ConcurrentWebSocketSessionDecorator safeSession =
+            new ConcurrentWebSocketSessionDecorator(session, 30000, 512 * 1024);
+        sessions.add(safeSession);
         System.out.println("NEW MESH NODE CONNECTED: Session " + session.getId() + " - Active Nodes: " + sessions.size());
     }
 
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) throws Exception {
         String payload = message.getPayload();
-        
+
         try {
             Map<String, Object> data = objectMapper.readValue(payload, Map.class);
             String type = (String) data.get("type");
@@ -53,15 +59,22 @@ public class MeshWebSocketHandler extends TextWebSocketHandler {
                 if (senderId != null && lat != null && lng != null) {
                     MeshNode node = new MeshNode(
                         senderId,
-                        name != null ? name : senderId.substring(0, 8),
+                        name != null ? name : senderId.substring(0, Math.min(8, senderId.length())),
                         timestamp != null ? timestamp.longValue() : System.currentTimeMillis(),
                         lat.doubleValue(),
                         lng.doubleValue()
                     );
-                    nodeRepository.save(node);
+                    try {
+                        // saveAndFlush handles both INSERT and UPDATE correctly
+                        nodeRepository.save(node);
+                    } catch (DataIntegrityViolationException e) {
+                        // Node already exists — attempt an update instead
+                        if (nodeRepository.existsById(senderId)) {
+                            nodeRepository.save(node);
+                        }
+                    }
                 }
             } else if (data.containsKey("messageId")) {
-                // It is a text message or SOS packet
                 String messageId = (String) data.get("messageId");
                 String senderId = (String) data.get("senderId");
                 String receiverId = (String) data.get("receiverId");
@@ -83,7 +96,6 @@ public class MeshWebSocketHandler extends TextWebSocketHandler {
                         status != null ? status : "Sent"
                     );
 
-                    // GATEWAY NODE ROUTING DISPATCH SIMULATION
                     if ("AUTHORITIES".equalsIgnoreCase(receiverId)) {
                         System.out.println("====================================================================");
                         System.out.println("🚨🚨🚨 GATEWAY NODE DISPATCH TRIGGERED 🚨🚨🚨");
@@ -94,20 +106,24 @@ public class MeshWebSocketHandler extends TextWebSocketHandler {
                         msg.setStatus("Gateway Delivered");
                     }
 
-                    messageRepository.save(msg);
-                    
+                    try {
+                        messageRepository.save(msg);
+                    } catch (DataIntegrityViolationException e) {
+                        // Duplicate message ID — skip silently
+                    }
+
                     // Re-serialize with updated status if changed
                     payload = objectMapper.writeValueAsString(msg);
                 }
             }
 
-            // Echo the parsed frame to all OTHER mesh sessions (simulating P2P propagation)
+            // Broadcast to all OTHER connected sessions safely via the concurrent decorator
             TextMessage broadcastMessage = new TextMessage(payload);
-            for (WebSocketSession s : sessions) {
+            for (ConcurrentWebSocketSessionDecorator s : sessions) {
                 if (s.isOpen() && !s.getId().equals(session.getId())) {
                     try {
                         s.sendMessage(broadcastMessage);
-                    } catch (IOException e) {
+                    } catch (Exception e) {
                         System.err.println("Failed to forward payload to session " + s.getId() + ": " + e.getMessage());
                     }
                 }
@@ -120,7 +136,7 @@ public class MeshWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        sessions.remove(session);
+        sessions.removeIf(s -> s.getId().equals(session.getId()));
         System.out.println("MESH NODE DISCONNECTED: Session " + session.getId() + " - Active Nodes: " + sessions.size());
     }
 }

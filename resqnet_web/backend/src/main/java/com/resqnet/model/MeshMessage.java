@@ -3,14 +3,9 @@ package com.resqnet.model;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Entity
 @Table(name = "messages")
-@Data
-@NoArgsConstructor
 public class MeshMessage {
     @Id
     private String messageId;
@@ -22,7 +17,12 @@ public class MeshMessage {
     private Integer hops;
     private String status;
 
-    public MeshMessage(String messageId, String senderId, String receiverId, String content, Long timestamp, Integer ttl, Integer hops, String status) {
+    // Required by JPA and Jackson for deserialization
+    public MeshMessage() {}
+
+    // Used by MeshWebSocketHandler to create messages from WS payloads
+    public MeshMessage(String messageId, String senderId, String receiverId, String content,
+                       Long timestamp, Integer ttl, Integer hops, String status) {
         this.messageId = messageId;
         this.senderId = senderId;
         this.receiverId = receiverId;
@@ -57,4 +57,3 @@ public class MeshMessage {
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
 }
-

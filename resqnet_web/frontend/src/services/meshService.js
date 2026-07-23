@@ -6,22 +6,26 @@ let watchId = null
 let activeProtocolsList = ['Bluetooth LE', 'Wi-Fi Direct', 'WebRTC Mesh']
 
 // Generate or retrieve a persistent unique device node identity
+// Keyed PER USERNAME so two different users on the same machine get different IDs
 const generateSelfNode = (username) => {
-  let nodeId = localStorage.getItem('resqnet_self_node_id')
-  
+  const storageKey = `resqnet_node_id_${username}`
+  let nodeId = localStorage.getItem(storageKey)
+
   if (!nodeId) {
-    const randId = Math.random().toString(36).substring(2, 8)
-    nodeId = `web-node-${randId}`
-    localStorage.setItem('resqnet_self_node_id', nodeId)
+    const randSuffix = Math.random().toString(36).substring(2, 8)
+    nodeId = `web-${username}-${randSuffix}`
+    localStorage.setItem(storageKey, nodeId)
   }
 
   // Always use the current logged-in user's username as the node name
-  let nodeName = username || localStorage.getItem('resqnet_self_node_name') || 'Web Node'
+  let nodeName = username || 'Web Node'
   localStorage.setItem('resqnet_self_node_name', nodeName)
 
   // Retrieve cached real GPS coordinates if available, otherwise default fallback
-  const cachedLat = parseFloat(localStorage.getItem('resqnet_self_lat'))
-  const cachedLng = parseFloat(localStorage.getItem('resqnet_self_lng'))
+  const latKey = `resqnet_lat_${username}`
+  const lngKey = `resqnet_lng_${username}`
+  const cachedLat = parseFloat(localStorage.getItem(latKey))
+  const cachedLng = parseFloat(localStorage.getItem(lngKey))
 
   let lat = !isNaN(cachedLat) ? cachedLat : 13.0827
   let lng = !isNaN(cachedLng) ? cachedLng : 80.2707
@@ -33,6 +37,7 @@ const generateSelfNode = (username) => {
     lng: lng
   }
 }
+
 
 export const initMeshService = (onMessageCallback, username) => {
   onMessageReceivedCallback = onMessageCallback
@@ -49,9 +54,9 @@ export const initMeshService = (onMessageCallback, username) => {
     selfNode.lat = actualLat
     selfNode.lng = actualLng
 
-    // Save position to localStorage
-    localStorage.setItem('resqnet_self_lat', actualLat.toString())
-    localStorage.setItem('resqnet_self_lng', actualLng.toString())
+    // Save position to localStorage keyed by username
+    localStorage.setItem(`resqnet_lat_${selfNode.name}`, actualLat.toString())
+    localStorage.setItem(`resqnet_lng_${selfNode.name}`, actualLng.toString())
 
     // Persist and sync coordinates immediately
     upsertNodeLocally(selfNode)
