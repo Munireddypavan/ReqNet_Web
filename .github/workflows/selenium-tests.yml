@@ -17,7 +17,7 @@ jobs:
       mysql:
         image: mysql:8.0
         env:
-          MYSQL_ROOT_PASSWORD: simatsucks
+          MYSQL_ROOT_PASSWORD: Bha@2921
           MYSQL_DATABASE: resqnet_db
         ports:
           - 3306:3306
